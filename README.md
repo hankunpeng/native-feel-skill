@@ -33,9 +33,93 @@ Install the native-feel skill for me:
 
 <div align="center">
 
-[What this is](#what-this-is) · [Philosophy](#philosophy) · [Layout](#layout) · [Sources](#sources)
+[Use cases](#use-cases) · [What this is](#what-this-is) · [Philosophy](#philosophy) · [Layout](#layout) · [Sources](#sources)
 
 </div>
+
+---
+
+## Use cases
+
+Once installed, the skill activates automatically whenever the conversation touches cross-platform desktop architecture, WebView quirks, or making a UI feel native. Two common ways to use it:
+
+### Case 1 — Refactor an existing app to feel more native
+
+You have an Electron / Tauri / web-wrapped app, and a designer (or your own eye) tells you it feels web-y. You want to know where to start and how far you can take it without a full rewrite.
+
+```
+You    ❯ My Electron app feels web-y on macOS — the designer says it
+         doesn't pass for a real Mac app. Where do I start?
+
+Agent  ❯ Quickest path is the 75-item native-feel audit
+         (checklists/ship-readiness.md). Most Electron apps fail
+         the same 6–8 items:
+           - cursor:pointer on rows (item 21)
+           - web-style modal overlays instead of native sheets (19)
+           - hardcoded brand accent instead of system accent (33)
+           - page fade-transitions (40)
+           - opaque window background instead of platform material (31)
+           - WebKit context menu still firing (23)
+         Each is a 5-to-30-minute fix; together they move you most
+         of the way to "passes the 30-second skeptical user test."
+
+         Bigger question first: how far do you need to go? If "good
+         enough" means passing that 30-second test, Electron + this
+         audit gets you 80% there without rewriting. If you want
+         "indistinguishable from a Mac app" — Liquid Glass materials,
+         native popovers, sub-200ms launch — Electron has a ceiling
+         you'll hit. Want me to run the decision tree first?
+```
+
+### Case 2 — Build a cross-platform native-feel app from scratch
+
+Greenfield project, must run on macOS + Windows, and the native feel is the *point* — a launcher, a productivity tool, an AI workspace your users live in all day.
+
+```
+You    ❯ Starting a new desktop app — macOS + Windows, native feel
+         is the whole pitch. What architecture should I use?
+
+Agent  ❯ Before architecture, the decision tree
+         (checklists/decision-tree.md) rules this stack out for
+         several common shapes — quick check first:
+           - Cold-start budget?  (<100ms → build native instead)
+           - Memory floor?       (<150MB → build native instead)
+           - Extension ecosystem? (yes → need the Node layer)
+           - Runway?             (<3mo → start on Electron)
+
+         If you pass, the four-layer architecture is:
+
+           ┌──────────────────────────────────────────────────┐
+           │ Native shell      Swift/AppKit  +  C#/WPF        │
+           │       ↕   one IPC schema, codegen for all sides  │
+           │ System WebView    WKWebView    +  WebView2       │
+           │   running React + TypeScript, shared 1:1         │
+           │       ↕                                          │
+           │ Node backend      single long-lived process      │
+           │       ↕                                          │
+           │ Rust core         UniFFI-bridged, sharable       │
+           │                   with iOS and server            │
+           └──────────────────────────────────────────────────┘
+
+         The expensive-to-get-wrong decisions, in order:
+           1. The IPC contract (one schema, codegen). Get this wrong
+              and you rebuild it later under duress.
+           2. WebView survival flags (occlusion off, alpha-prewarm,
+              _doAfterNextPresentationUpdate, font prewarming).
+           3. Memory hygiene (lazy-load extensions, tear down
+              secondary windows aggressively).
+
+         Want to start with the seam — where to draw the cross-
+         platform line — or with the IPC contract, since that's the
+         load-bearing piece?
+```
+
+### Other things the skill is good for
+
+- **"Why is my WKWebView flickering when I hide and re-show it?"** → walks you through `references/03-webview-survival.md` (most likely A.1 throttling or A.2 startup flicker).
+- **"How should typed IPC work across Rust, Swift, and TypeScript?"** → the UniFFI-based pattern in `references/04-ipc-contract.md`, with the exact `Coordinator`/`EventHandler` shape Raycast Beta ships.
+- **"My app is at 450 MB resident, is that bad?"** → the six common Activity-Monitor mistakes and what to actually measure, in `references/05-memory-truths.md`.
+- **"Is my designer's spec ‘native enough’?"** → the 70+ item conventions audit in `references/06-native-conventions.md`.
 
 ---
 
