@@ -1,6 +1,6 @@
 # native-feel-skill
 
-A Claude Code Skill for designing **cross-platform desktop apps that feel native** — distilled from Raycast's public 2.0 technical deep-dive and grounded in reverse-engineering of the shipping `Raycast Beta.app` binary.
+An Agent Skill for designing **cross-platform desktop apps that feel native** — distilled from Raycast's public 2.0 technical deep-dive and grounded in reverse-engineering of the shipping `Raycast Beta.app` binary.
 
 > *We're not a web app with some native hooks sprinkled on top. We're a native app that uses web for its UI.* — Raycast
 
@@ -29,7 +29,7 @@ Run [`checklists/decision-tree.md`](checklists/decision-tree.md) to find out if 
 
 ```
 native-feel-skill/
-├── SKILL.md                                # entry point for Claude Code
+├── SKILL.md                                # entry point for the agent
 ├── references/
 │   ├── 01-philosophy.md                    # 8 tenets that drive every decision
 │   ├── 02-architecture.md                  # the four-layer architecture
@@ -58,14 +58,16 @@ The central tension this architecture resolves: **how can a desktop app deliver 
 
 Read [`references/01-philosophy.md`](references/01-philosophy.md) first. Everything else is consequence.
 
-## Installation as a Claude Code Skill
+## Installation as an Agent Skill
+
+Agent Skills are the emerging standard for packaging domain knowledge that any compatible agent (Claude Code, the Claude Agent SDK, or other Agent-Skill-aware runtimes) can discover and load.
 
 ```bash
-# Clone into your Claude Code skills directory
+# Clone into your agent's skills directory
 git clone https://github.com/yetone/native-feel-skill ~/.claude/skills/native-feel-cross-platform-desktop
 ```
 
-Then in Claude Code, the skill activates automatically when you discuss cross-platform desktop architecture, WebView quirks, or Raycast-style apps.
+The skill activates automatically when the agent's conversation touches cross-platform desktop architecture, WebView quirks, or Raycast-style apps — the trigger conditions are declared in `SKILL.md`'s frontmatter.
 
 ## Sources
 
@@ -78,4 +80,4 @@ MIT — see [`LICENSE`](LICENSE).
 
 ## Credits
 
-Authored as a Claude Code Skill. The architecture this skill describes is Raycast's; the philosophy is the author's synthesis; the evidence is from the shipping app.
+Authored as an Agent Skill. The architecture this skill describes is Raycast's; the philosophy is the author's synthesis; the evidence is from the shipping app.
