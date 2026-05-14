@@ -1,8 +1,45 @@
-# native-feel-skill
+<div align="center">
 
-An Agent Skill for designing **cross-platform desktop apps that feel native** — distilled from Raycast's public 2.0 technical deep-dive and grounded in reverse-engineering of the shipping `Raycast Beta.app` binary.
+# native-feel.skill
 
-> *We're not a web app with some native hooks sprinkled on top. We're a native app that uses web for its UI.* — Raycast
+> *"Cross-platform development AND near-native performance — refuse the trade-off."*
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Agent Skill](https://img.shields.io/badge/Agent-Skill-7c3aed)](https://github.com/yetone/native-feel-skill)
+
+<br>
+
+**An Agent Skill for designing cross-platform desktop apps that feel native** — distilled from Raycast's 2.0 technical deep-dive and grounded in reverse-engineering of the shipping `Raycast Beta.app` binary.
+
+Two goals usually pull against each other: convenient cross-platform development, and near-native performance. This skill captures the structural choices — eight architectural tenets, a four-layer architecture, a WebKit/WebView2 survival guide, a 75-item ship audit — that let an app have both.
+
+<br>
+
+**Install** — paste this to your AI agent:
+
+</div>
+
+```
+Install the native-feel skill for me:
+
+1. Clone https://github.com/yetone/native-feel-skill into your
+   user-level skills directory as `native-feel-cross-platform-desktop/`
+   (whatever path your agent reads skills from on this machine — e.g.
+   `~/.claude/skills/` for Claude Code).
+2. Verify that SKILL.md plus the references/ and checklists/ subdirs
+   are present.
+3. Confirm the install path when done.
+```
+
+<div align="center">
+
+[What this is](#what-this-is) · [Philosophy](#philosophy) · [Layout](#layout) · [Sources](#sources)
+
+</div>
+
+---
+
+> *"We're not a web app with some native hooks sprinkled on top. We're a native app that uses web for its UI."* — Raycast
 
 ## What this is
 
@@ -58,16 +95,9 @@ The central tension this architecture resolves: **how can a desktop app deliver 
 
 Read [`references/01-philosophy.md`](references/01-philosophy.md) first. Everything else is consequence.
 
-## Installation as an Agent Skill
+## About Agent Skills
 
-Agent Skills are the emerging standard for packaging domain knowledge that any compatible agent (Claude Code, the Claude Agent SDK, or other Agent-Skill-aware runtimes) can discover and load.
-
-```bash
-# Clone into your agent's skills directory
-git clone https://github.com/yetone/native-feel-skill ~/.claude/skills/native-feel-cross-platform-desktop
-```
-
-The skill activates automatically when the agent's conversation touches cross-platform desktop architecture, WebView quirks, or Raycast-style apps — the trigger conditions are declared in `SKILL.md`'s frontmatter.
+Agent Skills are the emerging standard for packaging domain knowledge that any compatible agent (Claude Code, the Claude Agent SDK, or other Agent-Skill-aware runtimes) can discover and load. Once installed via the prompt at the top of this README, the skill activates automatically when the agent's conversation touches cross-platform desktop architecture, WebView quirks, or Raycast-style apps — the trigger conditions are declared in `SKILL.md`'s frontmatter.
 
 ## Sources
 
