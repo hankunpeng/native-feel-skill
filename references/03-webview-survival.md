@@ -14,7 +14,7 @@ If you take only one tenet from `references/01-philosophy.md` into this file, ta
 
 **Cause:** WebKit aggressively throttles `requestAnimationFrame`, CSS animations, and timers when it judges the view to be occluded or off-screen. For a hidden launcher that's prewarmed but invisible, *every* WebKit heuristic concludes "this is not visible, slow it down." Browser-correct, native-app-wrong.
 
-**Fix (two parts):**
+**Fix (three parts):**
 
 ```swift
 // 1. Disable WebKit's occlusion detection on the host window.
@@ -27,9 +27,22 @@ window.alphaValue = 0
 window.orderFront(nil)
 // …later, when actually showing:
 window.alphaValue = 1
+
+// 3. Keep the render loop "warm" by firing periodic rAFs from JS.
+//    A no-op rAF cycle convinces WebKit the page is actively animating, so the
+//    full 60 / 120 Hz frame budget stays allocated. Critical on first show.
 ```
 
-Combined, the WebView believes it is visible (so it doesn't throttle), but the user sees nothing until you flip alpha.
+In JS:
+```js
+// Run inside the prewarmed (alpha=0) WebView before the user-visible show.
+function keepWarm() {
+  requestAnimationFrame(keepWarm);
+}
+keepWarm();
+```
+
+Combined, the WebView believes it is visible (so it doesn't throttle), the rAF loop keeps its scheduler primed, and the user sees nothing until you flip alpha.
 
 **Why this is safe:** You're not deceiving WebKit about anything that affects correctness — only about animation budgeting. Throttling is an opportunistic optimization, not a security boundary.
 
@@ -155,7 +168,96 @@ This is one of the highest-leverage native-feel changes you can make.
 
 ---
 
-### A.8 Scroll inertia and rubber-banding
+### A.8 View transition / appearance flicker
+
+**Symptom:** When the user navigates between views inside the same window (search list → result detail, sidebar item → panel), the screen shows a 1-frame flash of empty / unstyled / mid-painted content. Or: when a sheet or panel slides in, its first frame is empty before the content appears.
+
+**Cause:** Three common sources, in order of frequency:
+
+1. **Unmount-before-mount.** The new view's React tree starts rendering *after* the old view is removed, leaving one frame where the container is empty.
+2. **CSS code-split arriving late.** Vite/esbuild splits CSS per route. If the new route's stylesheet hasn't been fetched yet, the DOM renders unstyled for a frame (FOUC) before the CSS lands.
+3. **The CSS View Transitions API is engaged with default keyframes**, which include a transparent gap in the middle of the cross-fade.
+
+**Fix:**
+
+1. **Cut, don't fade.** Native apps don't fade between sibling views inside a window. Kill any default transition:
+   ```css
+   /* If the View Transitions API is engaged */
+   ::view-transition-old(root),
+   ::view-transition-new(root) {
+     animation: none;
+   }
+   ```
+2. **Keep the previous view mounted until the new view has its first paint.** Concrete patterns:
+   - React Suspense with `useDeferredValue` or TanStack Router's `pendingComponent: false`.
+   - Render the previous content while `isFetching` and only swap when `data` is ready.
+   - Two stacked layers with the new one mounted invisible until first paint, then swap visibility.
+3. **Inline critical CSS, pre-fetch route CSS.** Configure your bundler to preload the next route's CSS the moment the user hovers/focuses an entry that could navigate there.
+4. **Avoid the View Transitions API** unless you're using it deliberately for one specific surface. Its defaults assume web-page semantics, not native-window semantics.
+
+The article specifically calls out "Elimination of view transition flickering" as one of Raycast's platform-convention adherence wins. It's small individually; collectively, the absence of these flickers is what makes a WebView UI stop feeling like a web app.
+
+### A.9 Emoji and fallback-font cold start
+
+**Symptom:** The first time the WebView renders an emoji or a CJK character that isn't covered by the primary font, there's a brief stutter — sometimes a missing-glyph rectangle for one frame, sometimes a layout jump as the fallback font is substituted in.
+
+**Cause:** WebKit (like all text engines) consults a font cascade. If the primary font lacks a glyph, it falls through to platform fallbacks: emoji → `Apple Color Emoji`, CJK → `PingFang SC` / `Hiragino Sans` / etc. The first lookup against a fallback font is *not* free — the font file has to be mapped, the glyph table parsed, the shaper initialized. On a cold start, this happens during user-facing rendering.
+
+**Fix — prewarm the fallback fonts at startup.** Render a hidden span containing the expected fallback characters once, before any user-visible content needs them:
+
+```js
+// Run early in the WebView's lifecycle (before the launcher shows).
+function prewarmFontFallbacks() {
+  const span = document.createElement('span');
+  span.setAttribute('aria-hidden', 'true');
+  span.style.cssText = 'position:absolute;left:-9999px;top:0;opacity:0;pointer-events:none';
+  // Cover the fallbacks you actually use: emoji, CJK, math symbols, dingbats.
+  span.textContent = '😀🎉✨📦🚀 中文 日本語 한국어 ∑∫√ ✓✗';
+  document.body.appendChild(span);
+  // One layout pass forces font resolution.
+  void span.getBoundingClientRect();
+  // Keep it briefly so Core Text retains the font in cache.
+  requestAnimationFrame(() => requestAnimationFrame(() => span.remove()));
+}
+```
+
+The double-rAF is intentional: it ensures the layout + paint both complete (registering the font with Core Text's cache) before the span is removed.
+
+**Why this matters specifically for native feel:** Native apps rendered through AppKit/UIKit benefit from system-wide font caches that warm across processes. A fresh WebView process has its own font state. Without prewarming, the first emoji in an AI chat response visibly stutters in a way that no native app ever does.
+
+### A.10 WebKit Feature Flags as a runtime power tool
+
+**Symptom (or rather: opportunity):** WKWebView exposes — via private but stable APIs — the same feature flags Safari exposes in its Develop menu. Most apps never touch these. A few of them are decisive for native feel.
+
+**The flags worth knowing about:**
+
+- **`RequestIdleCallbackEnabled`** — enable `requestIdleCallback`, which is gated off by default in WKWebView. Use it for non-critical background work without `setTimeout` hacks.
+- **The 60 Hz cap on ProMotion displays** — by default WKWebView paces at 60 Hz even on 120 Hz screens. There is a private setting (name varies by macOS version; check `WKPreferencesPrivate.h` or the `_WKExperimentalFeature` API) to unlock the full refresh rate. Enables genuinely 120 Hz scrolling and animation.
+- **Experimental CSS features** — `:has()`, container queries, etc. — that may be gated on older macOS versions but stable.
+
+**Mechanism (Swift):**
+
+```swift
+// Via _setBoolValue:forKey: on WKPreferences (private but long-stable).
+// Exact key names vary by macOS version; enumerate via _WKExperimentalFeature.
+let prefs = webView.configuration.preferences
+prefs.perform(Selector(("_setBoolValue:forKey:")),
+              with: NSNumber(value: true),
+              with: "RequestIdleCallbackEnabled" as NSString)
+
+// Or, more typed, via _WKExperimentalFeature:
+for feature in WKPreferences._experimentalFeatures() {
+    if feature.key == "RequestIdleCallbackEnabled" {
+        prefs._setEnabled(true, for: feature)
+    }
+}
+```
+
+**The discipline:** Treat these like the rest of the private API surface (e.g., `_doAfterNextPresentationUpdate` from A.2). They are stable in practice but uncontracted. Wrap each flag toggle in a try/catch and a "is this macOS version" check, and have a fallback path.
+
+**Why this matters:** The cap-at-60 issue is the single most common reason a Mac user with a ProMotion display says "this app feels stutter-y on my machine but smooth on my friend's." It is invisible to the developer who tests on a 60 Hz display. The fix is one private setting.
+
+### A.11 Scroll inertia and rubber-banding
 
 **Symptom:** Scrolling lists feels like scrolling a web page (slightly delayed, document-style inertia) rather than like scrolling a native list (snappier, contact-tracking).
 

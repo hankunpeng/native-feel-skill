@@ -102,9 +102,16 @@ For a bug report ("the app feels weird"): walk the user through the list. Often 
 
 ## Edge cases worth special note
 
-### Hover states
+### Hover states (the precise rule)
 
-Native apps *do* have hover states on list rows (the row gets a subtle background). What they don't have is `cursor: pointer`. The visual hover is fine and expected; the cursor change is the tell.
+The article phrases this as "no hover highlights on most controls — matching macOS button/list behavior." Unpacked:
+
+- **List rows / sidebar items / toolbar items:** native *does* show a subtle hover background. Keep this. The visual hover is fine; only the `cursor: pointer` is the tell.
+- **Plain push buttons (`NSButton.bezelStyle = .rounded`):** native does *not* show a hover effect. Don't add a background-change on hover to a normal button. Web apps reflexively do; macOS does not.
+- **Borderless / "icon" buttons in toolbars:** native shows a subtle background tint on hover. Match it.
+- **Hyperlinks inside content:** native AppKit shows underline on hover for `NSAttributedString` links. Match it for content links; do not add it to navigation chrome.
+
+The unifying principle: ask "what does the equivalent native control do here?" and do exactly that. The error is not "too much hover" or "too little" — it is *uniform* hover treatment, which is a web idiom. Native varies by control kind.
 
 ### Buttons
 
