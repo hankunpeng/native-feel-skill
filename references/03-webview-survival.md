@@ -2,7 +2,7 @@
 
 This is the densest file in the skill. Every section is a real, reproducible bug in `WKWebView` or `WebView2` when you try to use it as a native UI rendering surface instead of as a browser embed. For each, the symptom, the cause, and the exact fix.
 
-If you take only one tenet from `references/01-philosophy.md` into this file, take *Rectification of Names*: the WebView is not a browser tab, and most of these bugs exist because its defaults assume it is one.
+If you take only one tenet from `references/01-philosophy.md` into this file, take T3 — *adopt the platform; don't compete with it* — paired with its inverse corollary: when the platform's default actively *breaks* native feel (as many WebView defaults do, because they were designed for browser embedding, not native UI), override it precisely and only there. Most of these bugs exist because the WebView's defaults assume it is hosting a webpage, not a native app.
 
 ---
 

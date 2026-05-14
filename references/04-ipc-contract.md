@@ -1,6 +1,6 @@
 # 04 — The IPC Contract is the Spine
 
-Tenet 8 (Skandhas): the app is an aggregate of processes. The quality of the aggregation = the quality of the contracts between them.
+T2 (*one schema, many languages*) and T6 (*cross boundaries intentionally*) converge in this file. The architecture is many processes glued together; the glue is the IPC contract; the quality of the glue is the quality of the app.
 
 You have **four runtimes** that must speak to each other:
 

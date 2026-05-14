@@ -1,6 +1,6 @@
 # 05 — Memory: Reading the Map Honestly
 
-Tenets 4 (Map ≠ Territory) and 7 (Plato's Cave) live in this file. Before optimizing memory, you must learn what the numbers actually mean.
+T4 (*performance is a property of perception*) and T8 (*separate baseline from margin*) live in this file. Before optimizing memory, learn what the numbers actually mean and which costs you can and cannot influence.
 
 ---
 
@@ -15,7 +15,7 @@ For a native shell + system WebView + Node backend architecture:
 | WebView2 (one window, blank page) | ~80–120 MB | Chromium baseline is heavier than WebKit. |
 | Node.js runtime (no app code) | ~12 MB | Just `node` cold. |
 
-So your floor on macOS is ~90 MB, on Windows ~130 MB, *before* you write a line of app code. **This is not negotiable.** Tenet 6 (Dichotomy of Control): if you came here to make a 50 MB cross-platform desktop app, you are in the wrong architecture.
+So your floor on macOS is ~90 MB, on Windows ~130 MB, *before* you write a line of app code. **This is not negotiable.** This is the *baseline* in T8's sense — rented from the platform, not yours to optimize. If you came here to make a 50 MB cross-platform desktop app, you are in the wrong architecture.
 
 Typical *real* numbers for a mature app like Raycast:
 
@@ -75,7 +75,7 @@ A single Activity Monitor reading at one moment is meaningless. Memory bobs up a
 
 ## How to actually reduce memory cost
 
-Once you've stopped chasing shadows (tenet 7), here is what *actually* moves the needle, in order of impact:
+Once you've stopped chasing shadows (T4 — perception over measurement), here is what *actually* moves the needle, in order of impact:
 
 ### 1. Tear down secondary windows aggressively
 

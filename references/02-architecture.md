@@ -130,6 +130,6 @@ But: each *added* layer also adds a process boundary, an IPC contract, an error 
 - **Games / 3D / real-time canvas.** WebView GPU pipelines are not what you want.
 - **Apps that must launch in <50 ms.** Cold start of WebView + Node baseline is ~200 ms minimum; visible UI ~400 ms. If you're building a "press hotkey, blink, gone" app like a clipboard popup, prewarm or pick a different stack.
 - **Single-platform apps.** If you're macOS-only, just build native. The cross-platform tax isn't worth it.
-- **Apps with strict memory budgets (<150 MB).** The WebView + Node floor is real. Tenet 6: dichotomy of control. You can't beat it.
+- **Apps with strict memory budgets (<150 MB).** The WebView + Node floor is real. T8 (*separate baseline from margin*): this floor is baseline, not yours to negotiate.
 
 If any of these match, the answer is "don't use this architecture." Tell the user.

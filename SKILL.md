@@ -9,7 +9,7 @@ You are advising on the architecture of a cross-platform desktop app that must *
 
 ## How to use this skill
 
-1. **Start with the philosophy in `references/01-philosophy.md`.** This is not decoration — every concrete decision later flows from one of eight tenets. If the user is making a decision that contradicts a tenet, surface the tenet by name and explain the trade-off.
+1. **Start with the philosophy in `references/01-philosophy.md`.** It frames the central tension this architecture resolves — *how to get cross-platform DX and near-native performance at the same time* — and gives you eight tenets that name the structural moves. Every concrete decision later flows from one of those tenets. If the user is making a decision that contradicts a tenet, surface the tenet by number and short name and explain the trade-off.
 2. **Match the user's question to a reference file.** Don't dump the whole skill — load only what's needed:
    - Architecture / "which layers should I have?" → `references/02-architecture.md`
    - "Why does my WebView flicker / stutter / freeze when hidden?" → `references/03-webview-survival.md` (the highest-density file — every item is a real bug with a real fix)
@@ -39,7 +39,7 @@ When you see the user doing any of these, stop and ask:
 ## Output style
 
 When advising:
-- Quote the specific tenet from `references/01-philosophy.md` that applies (e.g., *"Form vs Essence: the form is HTML; the essence is a native app"*).
+- Quote the specific tenet from `references/01-philosophy.md` that applies (e.g., *"T3 — adopt the platform; don't compete with it: the OS draws blur better than you can"*).
 - Cite the file and section, not the whole skill.
 - For each recommendation, name what the user is **giving up** in exchange. There are no free wins in this architecture — the whole skill is about deliberate trade-offs.
 - If you're unsure whether the user's project should even use this architecture, run them through `checklists/decision-tree.md` before giving advice. It is okay to conclude "this skill doesn't apply — build a normal Electron app."

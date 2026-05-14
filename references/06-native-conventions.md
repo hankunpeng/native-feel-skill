@@ -1,6 +1,6 @@
 # 06 — Native Conventions: The Audit
 
-Tenets 2 (Rectification of Names — the WebView is not a browser) and 3 (Wu Wei — adopt platform behavior verbatim) converge here. This file is a list of behaviors that, when wrong, telegraph "web app." Each is independent. Each is cheap to fix once you know about it.
+T3 (*adopt the platform; don't compete with it*) and T4 (*performance is a property of perception*) converge here. This file is a list of behaviors that, when wrong, telegraph "web app." Each is independent. Each is cheap to fix once you know about it. None changes a benchmark; all change what the user feels.
 
 The goal: a skeptical user should examine the app for 30 seconds and conclude "this is a regular Mac/Windows app." Every item below is something that skeptic notices unconsciously.
 

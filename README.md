@@ -45,16 +45,16 @@ native-feel-skill/
 
 ## Philosophy
 
-Eight tenets. Each section of the skill cites the tenet it serves.
+The central tension this architecture resolves: **how can a desktop app deliver convenient cross-platform development AND near-native performance, when those goals usually pull against each other?** Eight tenets name the structural moves:
 
-1. **Form vs Essence (Aristotle)** — the matter is HTML; the essence is a native app.
-2. **Rectification of Names (Confucius)** — a WebView is *not* a browser tab.
-3. **Wu Wei (Taoism)** — don't fight the platform; adopt its conventions verbatim.
-4. **Map ≠ Territory (Korzybski)** — Activity Monitor's numbers are a map, not the reality.
-5. **Ship of Theseus** — identity lives in user muscle memory, not implementation.
-6. **Dichotomy of Control (Stoicism)** — you can't beat the WebView+Node baseline; optimize what you can.
-7. **Plato's Cave** — memory shadows ≠ memory pressure.
-8. **Skandhas (Buddhism)** — the app is an aggregate of processes; quality = IPC quality.
+1. **Place the seam at the rendering surface** — share above the WebView, diverge below it; this is the only altitude where both DX and native feel survive.
+2. **One schema, many languages** — pay the polyglot tax once at the declaration, never at the call site.
+3. **Adopt the platform; don't compete with it** — the OS draws blur, scrolling, materials, and dark mode better than you can.
+4. **Performance is a property of perception** — what the user feels, not what Activity Monitor reports.
+5. **The short iteration loop is the product** — 200 ms hot reload vs 30 s native rebuild is a 150× compounding advantage.
+6. **Cross boundaries intentionally** — IPC has a cost; design every crossing as async, batched, schema-typed.
+7. **Identity is muscle memory** — the hotkey, the rank order, the verbs are the app; everything else is implementation.
+8. **Separate baseline from margin** — the WebView+Node floor is rented; only your dirty pages are yours to optimize.
 
 Read [`references/01-philosophy.md`](references/01-philosophy.md) first. Everything else is consequence.
 

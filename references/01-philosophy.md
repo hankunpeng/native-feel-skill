@@ -1,125 +1,111 @@
-# 01 — Philosophy
+# 01 — The Architectural Philosophy
 
-Eight tenets. Every concrete decision later in this skill reduces to one of these. When advising, name the tenet, then cite the concrete consequence.
+The central question this architecture answers:
 
----
+> **How can a desktop app simultaneously deliver convenient cross-platform development AND near-native performance, when these two goals usually pull against each other?**
 
-## 1. Form vs Essence (Aristotle)
+The default trade-off is forced: choose a stack and accept its consequences. Pure native gets you performance and loses cross-platform — every feature ships twice. Electron gets you cross-platform and loses performance — every interaction feels web. Tauri sits between them but inherits enough of both costs to satisfy neither.
 
-> *"We're not a web app with some native hooks sprinkled on top. We're a native app that uses web for its UI."* — Raycast
+This architecture refuses the trade-off. It does so by being precise about **what should be shared** and **what must diverge**, then placing the boundary at exactly the altitude where both can win.
 
-Aristotle distinguished the **matter** (what a thing is made of) from the **form** (what it *is*). A bronze statue is bronze, but a statue. A native-feel desktop app is HTML+JS, but a native app.
-
-The category mistake to avoid: assuming that **what the UI is built from** determines **what the app is**. It doesn't. The app's essence is its *behavior* — how it launches, how it handles focus, how it composites with the OS. The form (DOM and CSS) is incidental.
-
-**Consequence:** Stop measuring success by "is this written in Swift/Rust/whatever native." Measure by "would a skeptical user notice this is a WebView." If the answer is no, the essence is native, regardless of the matter.
+Eight tenets follow from this central insight. Each one names a tension and the structural resolution. When advising, cite the tenet by number and short name.
 
 ---
 
-## 2. 正名 — Rectification of Names (Confucius)
+## 1. Place the seam at the rendering surface
 
-> *"If names be not correct, language is not in accordance with the truth of things."* — Analects XIII.3
+The cross-platform boundary should be drawn at the **WebView surface**, not at the app boundary and not at the business-logic boundary.
 
-A `WKWebView` inside your `NSWindow` is **not a browser tab**. The moment you call it a "browser embed," you import every browser assumption — back/forward buttons, address bar metaphors, autosuspend-when-hidden, scroll inertia tuned for trackpad scrolling of documents.
+- **Below the WebView** — windowing, hotkeys, materials, file dialogs, system tray, accessibility, input methods — *must* be native, because no abstraction over these is fast or correct enough.
+- **Above the WebView** — the React tree, business logic, extension API, AI orchestration — *should* be shared, because reimplementing these per OS doubles every feature's cost.
 
-Name it correctly: it is a **rendering surface** owned by a native app. With the right name, decisions follow:
-- It doesn't need a User-Agent. (It's not browsing.)
-- It doesn't need to throttle when "hidden." (The native shell knows what hidden means; the WebView doesn't.)
-- It doesn't need its own context menu. (The native shell provides one.)
+The seam exists because at this exact altitude, each side has the **least leverage to mimic the other**. Native code can't fake native materials through an abstraction layer; web code can't economically be rewritten twice. So you draw the line here, not at a more convenient-sounding place like "all UI in one stack" or "all platform code in one stack."
 
-**Consequence:** Audit every default WebView behavior. If it makes sense only because WebViews evolved from web browsers, turn it off.
+**Consequence:** Any cross-platform decision can be tested by asking: *is this above the rendering surface or below it?* Below → write it twice in idiomatic native. Above → write it once in TS/React. Refuse to draw the line anywhere else.
 
 ---
 
-## 3. Wu Wei — Effortless Action (Taoism)
+## 2. One schema, many languages
 
-> *"道常无为而无不为"* — Dao De Jing 37 ("The Way takes no action, yet leaves nothing undone.")
+A four-runtime system (native shell, WebView, Node backend, Rust core) is normally a maintenance nightmare. Types drift, messages mismatch, debugging gets routed across boundaries no human can trace.
 
-The exhausting way to build native feel is to override the platform: re-implement scrolling, re-skin controls, polyfill window chrome. The Taoist way is to *not fight*.
+This architecture makes polyglot survivable by declaring **one schema** for all inter-process messages, then generating typed clients for every runtime. The polyglot cost is paid **once** at the declaration, never again at the call site. Drift becomes impossible because every language fails to compile when the schema changes.
 
-- macOS draws sheets a certain way. Don't ship a modal that floats centered with a backdrop blur unless macOS would.
-- Windows uses acrylic title bars. Don't paint your own.
-- The OS knows what color the menu bar should be in dark mode. Don't compute it.
-
-**Consequence:** When a design ask conflicts with platform convention, the *first* question is "what does the OS do here?" and the second is "can we just do that?" Custom is the last resort.
+**Consequence:** Hand-written marshalling between languages is forbidden. If you can't generate a typed client for a runtime, don't add that runtime to the system. (See `references/04-ipc-contract.md` for the UniFFI-based pattern that Raycast ships.)
 
 ---
 
-## 4. The Map is Not the Territory (Korzybski)
+## 3. Adopt the platform; don't compete with it
 
-> Activity Monitor says 420 MB. Real memory cost: maybe 180 MB.
+The platform's blur is faster than your blur. The platform's scrollbar is more correct than your scrollbar. The platform's dark mode follows the user's preference better than your dark mode. The platform's focus ring matches the user's other apps and yours does not.
 
-The numbers your OS shows you are a **map** — a model of reality optimized for system-monitor UIs. The territory is the actual page state in physical RAM:
-- **Compressed pages**: counted as resident but cost a fraction in real RAM.
-- **Shared frameworks**: counted against every process that links them.
-- **Clean pages**: instantly evictable; cost approaches zero under pressure.
-- **Dirty pages**: the only thing that actually constrains the system.
+Every time you reimplement a platform feature you are simultaneously *slower*, *less correct*, *more brittle to OS updates*, and *more annoying to the user who is fluent in their OS*. The work is paid for in performance, polish, and compatibility, and the return is essentially zero — because the platform was going to do this for you.
 
-**Consequence:** Before optimizing memory, learn to read the map honestly. Most "memory problems" in WebView+Node apps are mapping artifacts. See `references/05-memory-truths.md`.
+**Consequence:** When a feature can be implemented by "let the OS do it," that is the implementation. Custom is the last resort, reserved for the small set of behaviors where the OS default actively *breaks* native feel (e.g., WebKit's browser-style context menu inside your app — see `references/03-webview-survival.md`).
 
 ---
 
-## 5. Ship of Theseus — Identity Through Change
+## 4. Performance is a property of perception
 
-If you rewrite the AppKit shell into Swift, replace the search index with Rust, swap the UI from native to React, and add a Windows port — is it still the same app?
+The user does not experience MB or FPS. The user experiences "the launcher came up when I hit the hotkey" or "it didn't." "I typed and the result updated" or "it stuttered." "I dragged the window and it moved" or "it lagged."
 
-The Raycast answer: **yes, because identity lives in the user's muscle memory.** ⌘-Space still opens the launcher. ⌘-K still triggers actions. The fuzzy match still ranks the same way. The keystrokes-to-result count is the same. *That* is the ship; the planks are replaceable.
+System monitors measure *resources consumed*. The user measures *promises kept*. These are different. An app can show 400 MB resident and feel instant. An app can show 80 MB resident and feel sluggish. Optimization energy must go to the second metric, not the first.
 
-**Consequence:** When tempted to "modernize" a UX detail during a rewrite, ask whether you're replacing a plank (allowed) or repainting the ship a different color (a betrayal of identity). Plank swaps preserve identity. Behavior changes destroy it.
-
----
-
-## 6. Dichotomy of Control (Epictetus / Stoicism)
-
-> *"Of things some are in our power, and others are not."*
-
-You **cannot** make WKWebView cost less than ~50 MB at rest. You **cannot** make Node use less than ~12 MB cold. You **cannot** prevent Chromium from using a GPU helper process.
-
-You **can** control: how many WebViews you instantiate, when you tear them down, how aggressively you reuse them, whether dirty pages get flushed before window-hide, what's in your bundle.
-
-**Consequence:** Don't pick fights with baselines you didn't author. Spend optimization budget on the dirty pages your code creates, not the platform constants your runtime imports.
+**Consequence:** Before optimizing anything, define the perception target: a specific keystroke, a specific frame, a specific latency the user will feel. Then measure that. "Reduce memory by 20%" is not a target if the user cannot perceive the reduction. (See `references/05-memory-truths.md` for the six common measurement mistakes this principle prevents.)
 
 ---
 
-## 7. Plato's Cave (Memory edition)
+## 5. The short iteration loop is the product
 
-Activity Monitor's "Memory" column is a shadow on the cave wall. The shadow looks alarming. The real form — the system memory pressure graph — is what tells you whether you have a problem.
+A native UI codebase iterates in ~30 seconds (recompile, relaunch, restate). A React UI codebase iterates in ~200 milliseconds (hot module reload, state preserved). Over a year of design work, this 150× gap is the difference between an app whose UI feels finished and one whose UI feels unfinished — not because the team is more talented, but because they could afford 150× more iterations.
 
-Engineers who optimize against the shadow chase phantoms: they make the Activity Monitor number go down by techniques that may *increase* real cost (e.g., forcing decompression to "release" memory, which immediately gets re-allocated and dirtied).
+This is *the* reason the architecture pays the cross-platform tax. The tax buys not only "runs on two OSes" but "iterates 150× faster on its hottest surface, where the design team spends 80% of its time." The iteration loop is the silent compound interest of the architecture.
 
-**Consequence:** When the user says "our app uses too much memory," ask: "compared to what, measured how, under what workload, with what pressure?" Most of the time there is no answer, only the shadow.
-
----
-
-## 8. Skandhas — The App is an Aggregate (Buddhism)
-
-Buddhism teaches the self is not a single entity but a temporary aggregation of five components (skandhas). A modern desktop app is similar:
-
-- A **native shell** process (Swift / C#)
-- A **WebContent** process (the WebView's renderer)
-- A **GPU helper** process (WebKit / Chromium)
-- A **Networking** process
-- A **Node backend** process
-- A **Rust subprocess** (file indexer, etc.)
-- An **Updater** process
-
-These are stitched together by IPC and a single window in the user's mind. None is "the app." The cohesion is in the protocol between them.
-
-**Consequence:** Architectural quality is the quality of the contracts between these processes. See `references/04-ipc-contract.md` — IPC is not plumbing, it is the spine.
+**Consequence:** Any architectural change that lengthens the UI iteration loop — moving UI back to native, adding a build step, introducing a slower transpiler — must justify itself against this compounding cost. Almost none can.
 
 ---
 
-## Cross-tenet summary
+## 6. Cross boundaries intentionally
 
-| Tenet | What it forbids | What it requires |
-|---|---|---|
-| Form vs Essence | Caring about implementation purity | Caring about user-perceived behavior |
-| Rectification of Names | Calling the WebView "an embedded browser" | Calling it a rendering surface and acting accordingly |
-| Wu Wei | Re-implementing platform behavior | Adopting platform behavior verbatim where possible |
-| Map is Not Territory | Trusting Activity Monitor | Reading dirty pages, pressure, compressed state |
-| Ship of Theseus | Repainting UX during a rewrite | Preserving muscle-memory invariants |
-| Dichotomy of Control | Fighting WebView/Node baselines | Optimizing your own dirty pages |
-| Plato's Cave | Chasing shadow metrics | Measuring system pressure |
-| Skandhas | Treating "the app" as monolithic | Investing in the IPC contract |
+The architecture has many process boundaries: native shell ↔ WebView, WebView ↔ Node, Node ↔ Rust, Rust ↔ native shell. Each crossing has a cost: serialization, scheduling, context switching, debugging difficulty. These costs are bearable only because boundaries are crossed **intentionally** — async, batched, schema-typed, observable — and never *accidentally*.
 
-When a recommendation in a later file lands, point back to the tenet it serves. The reader should be able to predict the recommendation from the tenet alone.
+The failure mode is treating IPC like a function call. Accidental hot loops across a process boundary (e.g., a React effect that sends a message to Node on every keystroke that triggers a chain of further messages) destroy performance invisibly. Each individual hop looks cheap; the aggregate is catastrophic.
+
+**Consequence:** Every IPC call is a design decision. Trace every call's frequency and payload in development. Batch where you can. Cache where it's safe. Treat the IPC layer as a public API of each process, not as a hidden implementation detail.
+
+---
+
+## 7. Identity is muscle memory
+
+When this architecture is used to rewrite an existing app, it is rewriting *everything*: the language, the UI framework, the renderer, the process model. By any normal measure of "is this the same app," the answer should be no.
+
+Yet to the user, it is the same app — if and only if the user's **muscle memory** still works. ⌘-Space still opens the launcher. The first result is still the one they were going to pick. The shortcuts they typed yesterday still work today. The rank order of fuzzy matches still feels right. *These* are the app, in the only sense the user cares about. Everything else is implementation detail.
+
+**Consequence:** During a rewrite, treat muscle-memory invariants as the hard constraint and the implementation as the variable. The temptation to "modernize" UX details during the rewrite is the temptation to break identity in exchange for cosmetic novelty. Resist it.
+
+---
+
+## 8. Separate baseline cost from margin cost
+
+Some costs are **baseline**: they come bundled with the architectural choice and cannot be reduced without abandoning the choice. The system WebView's ~50 MB. Node's ~12 MB. Chromium's GPU helper process. These costs are *rented* from the platform.
+
+Other costs are **margin**: they are produced by code you wrote. Your bundle size, your dirty heap pages, your cache sizes, your subscription leaks. These costs are *owned* by you.
+
+The classic mistake is to spend optimization energy on baseline costs (impossible) while ignoring margin costs (where every win is available). The reverse is the discipline: accept the baseline honestly, then attack margin with full force.
+
+**Consequence:** Before any "make the app smaller / faster" project, classify each cost as baseline or margin. Margin is where the work goes. Baseline is what you communicate to the user, never apologize for, and design around.
+
+---
+
+## How the eight tenets resolve the central tension
+
+| Tension | Resolved by |
+|---|---|
+| Cross-platform without losing native feel | T1 (seam at rendering surface) + T3 (adopt the platform) |
+| Polyglot without drift | T2 (one schema, many languages) |
+| Performance perception under a WebView baseline | T4 (perception, not measurement) + T8 (baseline vs margin) |
+| Iteration speed under architectural complexity | T5 (iteration loop is the product) |
+| IPC overhead in a four-process system | T6 (cross boundaries intentionally) |
+| Continuity across a rewrite | T7 (identity is muscle memory) |
+
+If a proposed change to the architecture appears to break the central tension's resolution, the change is suspect. Find which tenet it contradicts, name the tension that tenet was resolving, and ask whether the proposer has a better resolution for that same tension — or whether they're just accepting the trade-off the architecture refused.
